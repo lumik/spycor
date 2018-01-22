@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 ### Changed
+- `around:` renamed to `extra:`
 
 ### Fixed
 - [Bug #7](https://github.com/lumik/spycor/issues/7): y axis didn't rescale in new Matlab.

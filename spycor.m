@@ -17,7 +17,7 @@ handles.spectra_corr = handles.spectra_orig;
 handles.N_spectra = 1;
 
 handles.std_times = 30;
-handles.around_spike = 3;
+handles.extra_del_points = 3;
 handles.chosen_spectrum = 1;
 
 handles.minN = 2; % number of spectra, where disappears spike when spike
@@ -63,13 +63,13 @@ handles.times_edit = uicontrol('Style','edit','Units','normalized','Position',..
     'TooltipString','Multiples of standard deviation to resolve spike','FontSize',10,...
     'Callback', @times_edit_Callback, 'CreateFcn', @times_edit_CreateFcn);
 
-handles.around_text = uicontrol('Style','text','Units','normalized','Position',...
-    [.36 .15 .17 .8],'String','around:','Parent',handles.settings_panel,...
-    'TooltipString','Number of points to be deleted around spike','FontSize',10);
-handles.around_edit = uicontrol('Style','edit','Units','normalized','Position',...
-    [.55 .15 .13 .8],'String',num2str(handles.around_spike),'Parent',handles.settings_panel,...
-    'TooltipString','Number of points to be deleted spike','FontSize',10,...
-    'Callback', @around_edit_Callback, 'CreateFcn', @around_edit_CreateFcn);
+handles.extra_del_points_text = uicontrol('Style','text','Units','normalized','Position',...
+    [.36 .15 .17 .8],'String','extra:','Parent',handles.settings_panel,...
+    'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10);
+handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','Position',...
+    [.55 .15 .13 .8],'String',num2str(handles.extra_del_points),'Parent',handles.settings_panel,...
+    'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
+    'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
 
 %Make the UI visible.
 set(hObject,'Visible','on');
@@ -259,10 +259,9 @@ treat_data(hObject);
 plot_function(hObject);
 
 % --- Executes during object creation, after setting all properties.
-function around_edit_CreateFcn(hObject, eventdata)
-% hObject    handle to kak_slider_min_edit (see GCBO)
+function extra_del_points_edit_CreateFcn(hObject, eventdata)
+% hObject    handle to extra_del_points_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
@@ -270,17 +269,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-function around_edit_Callback(hObject, eventdata)
-% hObject    handle to kak_slider_step_edit (see GCBO)
+function extra_del_points_edit_Callback(hObject, eventdata)
+% hObject    handle to extra_del_points_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of times_edit as text
-%        str2double(get(hObject,'String')) returns contents of times_edit as a double
 
 handles = guidata(hObject);
 
-handles.around_spike = str2double(get(hObject, 'String'));
+handles.extra_del_points = str2double(get(hObject, 'String'));
 
 guidata(hObject, handles);
   
@@ -304,13 +299,13 @@ for ii = 1:handles.N_spectra
         % subtracting identified spikes from the spectrum
         corrSpc = handles.spectra_orig;
         for jj = 1:size(corrIdx{ii},2)
-            if corrIdx{ii}{jj}(1) > handles.around_spike
-                idx1 = corrIdx{ii}{jj}(1)-handles.around_spike;
+            if corrIdx{ii}{jj}(1) > handles.extra_del_points
+                idx1 = corrIdx{ii}{jj}(1)-handles.extra_del_points;
             else
                 idx1 = 1;
             end
-            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.around_spike + 1
-                idx2 = corrIdx{ii}{jj}(end)+handles.around_spike;
+            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
+                idx2 = corrIdx{ii}{jj}(end)+handles.extra_del_points;
             else
                 idx2 = length(handles.x_scale);
             end
@@ -418,13 +413,13 @@ handles.spectra_corr = handles.spectra_orig;
 for ii = 1:handles.N_spectra
     if ~isempty(corrIdx{ii}) % controll, if there is any spike in
         for jj = 1:size(corrIdx{ii},2)
-            if corrIdx{ii}{jj}(1) > handles.around_spike
-                idx1 = corrIdx{ii}{jj}(1)-handles.around_spike;
+            if corrIdx{ii}{jj}(1) > handles.extra_del_points
+                idx1 = corrIdx{ii}{jj}(1)-handles.extra_del_points;
             else
                 idx1 = 1;
             end
-            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.around_spike + 1
-                idx2 = corrIdx{ii}{jj}(end)+handles.around_spike;
+            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
+                idx2 = corrIdx{ii}{jj}(end)+handles.extra_del_points;
             else
                 idx2 = length(handles.x_scale);
             end
@@ -451,13 +446,13 @@ plot(handles.x_scale, handles.avg_spc(:,ii)+handles.std_times*handles.std_spc(ii
 pH(end + 1) = plot(handles.x_scale, handles.spectra_orig(:,ii),'-b');
 if ~isempty(handles.corrIdx{ii})
     for jj = 1:size(handles.corrIdx{ii},2)
-        if handles.corrIdx{ii}{jj}(1) > handles.around_spike
-            idx1 = handles.corrIdx{ii}{jj}(1)-handles.around_spike;
+        if handles.corrIdx{ii}{jj}(1) > handles.extra_del_points
+            idx1 = handles.corrIdx{ii}{jj}(1)-handles.extra_del_points;
         else
             idx1 = 1;
         end
-        if handles.corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.around_spike + 1
-            idx2 = handles.corrIdx{ii}{jj}(end)+handles.around_spike;
+        if handles.corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
+            idx2 = handles.corrIdx{ii}{jj}(end)+handles.extra_del_points;
         else
             idx2 = length(handles.x_scale);
         end
