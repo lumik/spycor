@@ -469,10 +469,9 @@ else
     legend(pH, {'spc','avg'},'Location','best');
 end
 
-aLims = axis;
 xmin = min(handles.x_scale);
 xmax = max(handles.x_scale);
 dx = (xmax - xmin) / 50;
-axis([xmin - dx, xmax + dx, aLims(3:4)])
+axis([xmin - dx, xmax + dx, -inf, inf])
 
 guidata(hObject,handles);

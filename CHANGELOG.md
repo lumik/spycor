@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 ### Fixed
+- [Bug #7](https://github.com/lumik/spycor/issues/7): y axis didn't rescale in new Matlab.
 
 ### Removed
 
