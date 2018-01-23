@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [Enhancement #2](https://github.com/lumik/spycor/issues/2): Enabled different settings for individual spectra.
+- `all` button, which resets settings for idndividual spectra to the settings of the current spectrum.
 
 ### Changed
 - `around:` renamed to `extra:`

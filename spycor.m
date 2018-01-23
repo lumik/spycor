@@ -78,6 +78,15 @@ handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','P
     'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
     'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
 
+if handles.all
+    all_pushbutton_enable = 'off';
+else
+    all_pushbutton_enable = 'on';
+end
+handles.all_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.81 .15 .085 .8],...
+    'String', 'all', 'Parent', handles.settings_panel,...
+    'TooltipString', 'Sets the current settings for all spectra',...
+    'Enable', all_pushbutton_enable, 'FontSize', 10, 'Callback', @all_pushbutton_Callback);
 handles.all_checkbox = uicontrol('Style', 'checkbox', 'Units', 'normalized', 'Position', [.90 .35 .10 .4],...
     'String', 'all', 'Parent', handles.settings_panel,...
     'Value', handles.all,...
@@ -350,10 +359,14 @@ if handles.all
         ~handles.calculated_once...
         | (handles.std_times_separate ~= handles.std_times * ones(N, 1))...
         | (handles.extra_del_points_separate ~= handles.extra_del_points * ones(N, 1));
+
+    set(handles.all_pushbutton, 'Enable', 'off')
 else
     handles.recalculate(ii) =...
         (handles.std_times_separate(ii) ~= handles.std_times)...
         | (handles.extra_del_points_separate(ii) ~= handles.extra_del_points);
+
+    set(handles.all_pushbutton, 'Enable', 'on')
 end
 
 handles.all_used = true;
@@ -361,6 +374,22 @@ handles.all_used = true;
 guidata(hObject, handles);
 
 change_spectrum(hObject);
+
+
+% --- Executes on button press in choose_spec_pushbutton.
+function all_pushbutton_Callback(hObject, eventdata)
+% hObject    handle to all_pushbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+handles = guidata(hObject);
+
+ii = handles.chosen_spectrum;
+
+handles.recalculate =...
+    (handles.std_times_separate ~= handles.std_times_separate(ii))...
+    | (handles.extra_del_points_separate ~= handles.extra_del_points_separate(ii));
+handles.std_times_separate = ones(handles.N_spectra, 1) * handles.std_times_separate(ii);
+handles.extra_del_points_separate = ones(handles.N_spectra, 1) * handles.extra_del_points_separate(ii);
+guidata(hObject, handles);
 
 
 function treat_data(hObject, spc_no)
