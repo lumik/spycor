@@ -14,14 +14,21 @@ handles.filename = '';
 
 handles.spectra_orig = zeros(2,2);
 handles.spectra_corr = handles.spectra_orig;
+handles.avg_spc = handles.spectra_orig;
+handles.std_spc = zeros(size(handles.spectra_orig, 2), 1);
+handles.corrIdx = cell(size(handles.spectra_orig, 2), 1);
 handles.N_spectra = 1;
+handles.recalculate = ones(1, 1);
+handles.calculated_once = zeros(1, 1);
 
 handles.std_times = 30;
+handles.std_times_separate = ones(1, 1) * handles.std_times;
 handles.extra_del_points = 3;
+handles.extra_del_points_separate = ones(1, 1) * handles.extra_del_points;
+handles.all = true;
+handles.all_used = false;  % if all spectra had the same values of settings and has not been set to idividual settings
+% yet, the default value for them will be the same as the settings for all spectra.
 handles.chosen_spectrum = 1;
-
-handles.minN = 2; % number of spectra, where disappears spike when spike
-% in the current spectrum is subtracted
 
 % functional handles
 h=spycor_functions;
@@ -34,7 +41,7 @@ handles.load_menuitem = uimenu(handles.file_menu, 'Label','Save','Accelerator','
     'Callback',@save_menuitem_Callback);
 
 handles.select_spec_panel = uipanel('Title','Select spectrum','Units',...
-    'normalized','Position',[.05,.88,.4,.1],'Visible','off');
+    'normalized','Position',[.05,.88,.35,.1],'Visible','off');
 handles.chosen_spec_text = uicontrol('Style','pushbutton','Units','normalized',...
     'Position',[.47 .15 .5 .8],'String','Chosen spectrum:','Parent',...
     handles.select_spec_panel,'BackgroundColor','green','Enable',...
@@ -54,22 +61,29 @@ handles.up_pushbutton = uicontrol('Style','pushbutton','Units','normalized','Pos
 handles.main_axes = axes('Units','normalized','Position',[0.05,0.05,0.9,0.8]);
 
 handles.settings_panel = uipanel('Title','Settings','Units',...
-    'normalized','Position',[.55,.88,.4,.1],'Visible','off');
+    'normalized','Position',[.42,.88,.53,.1],'Visible','off');
 handles.times_text = uicontrol('Style','text','Units','normalized','Position',...
-    [.02 .15 .17 .8],'String','times:','Parent',handles.settings_panel,...
+    [.01 .35 .13 .4],'String','times:','Parent',handles.settings_panel,...
     'TooltipString','Multiples of standard deviation to resolve spike','FontSize',10);
 handles.times_edit = uicontrol('Style','edit','Units','normalized','Position',...
-    [.21 .15 .13 .8],'String',num2str(handles.std_times),'Parent',handles.settings_panel,...
+    [.14 .15 .10 .8],'String',num2str(handles.std_times),'Parent',handles.settings_panel,...
     'TooltipString','Multiples of standard deviation to resolve spike','FontSize',10,...
     'Callback', @times_edit_Callback, 'CreateFcn', @times_edit_CreateFcn);
 
 handles.extra_del_points_text = uicontrol('Style','text','Units','normalized','Position',...
-    [.36 .15 .17 .8],'String','extra:','Parent',handles.settings_panel,...
+    [.25 .35 .12 .4],'String','extra:','Parent',handles.settings_panel,...
     'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10);
 handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','Position',...
-    [.55 .15 .13 .8],'String',num2str(handles.extra_del_points),'Parent',handles.settings_panel,...
+    [.37 .15 .10 .8],'String',num2str(handles.extra_del_points),'Parent',handles.settings_panel,...
     'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
     'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
+
+handles.all_checkbox = uicontrol('Style', 'checkbox', 'Units', 'normalized', 'Position', [.90 .35 .10 .4],...
+    'String', 'all', 'Parent', handles.settings_panel,...
+    'Value', handles.all,...
+    'Tooltipstring', ['All spectra have the same settings. If set to true, the settings for all spectra will be set'...
+    ' to settings for the current spectrum. Custom settings will be restored if it is set to false again.'],...
+    'Callback', @all_checkbox_Callback);
 
 %Make the UI visible.
 set(hObject,'Visible','on');
@@ -99,9 +113,21 @@ else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
 
   handles.x_scale = data_orig(:,1);
   handles.spectra_orig = data_orig(:,2:end);
+  N = size(handles.spectra_orig, 2);
+  handles.N_spectra = N;
+
   handles.spectra_corr = handles.spectra_orig;
-  handles.N_spectra = size(handles.spectra_orig,2);
+  handles.avg_spc = handles.spectra_orig;
+  handles.std_spc = zeros(N, 1);
+  handles.corrIdx = cell(N, 1);
+
   handles.chosen_spectrum = 1;
+  handles.recalculate = ones(N, 1);
+  handles.calculated_once = zeros(N, 1);
+
+  handles.std_times_separate = ones(handles.N_spectra, 1) * handles.std_times;
+  handles.extra_del_points_separate = ones(handles.N_spectra, 1) * handles.extra_del_points;
+
 
   set(handles.select_spec_panel, 'Visible','on');
   set(handles.settings_panel, 'Visible','on');
@@ -120,9 +146,9 @@ else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
   
   guidata(hObject, handles);
   
-  treat_data(hObject);
+  treat_data(hObject, handles.chosen_spectrum);
   
-  plot_function(hObject);
+  change_spectrum(hObject);
 end
 
 function save_menuitem_Callback(hObject, eventdata)
@@ -131,7 +157,16 @@ function save_menuitem_Callback(hObject, eventdata)
 % handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
 
-savedata = [handles.x_scale,handles.spectra_corr];
+if any(handles.recalculate)
+    I = find(handles.recalculate);
+    for ii = 1:length(I)
+        treat_data(hObject, I(ii));
+    end
+end
+
+handles = guidata(hObject);
+
+savedata = [handles.x_scale ,handles.spectra_corr];
 I = find(handles.filename == '.', 1, 'last');
 filename = [handles.filepath,handles.filename(1:I-1),'_kor.txt'];
 fprintf('Saving file:\n%s\n',filename);
@@ -175,12 +210,10 @@ if ~isequal(odpoved_num_of_spec,{})
         else
             set(handles.up_pushbutton, 'Enable', 'off');
         end
-        set(handles.chosen_spec_text, 'String', ...
-            sprintf('Chosen spectrum: %d', num_chos_spec), ...
-            'BackgroundColor', 'green');
         handles.chosen_spectrum = num_chos_spec;
+
         guidata(hObject, handles);
-        plot_function(hObject);
+        change_spectrum(hObject);
     end
 end 
 
@@ -200,11 +233,9 @@ if handles.chosen_spectrum < handles.N_spectra;
     set(handles.up_pushbutton,'Enable','on');
 end
 
-set(handles.chosen_spec_text, 'String', ...
-    sprintf('Chosen spectrum: %d', handles.chosen_spectrum), ...
-    'BackgroundColor', 'green');
-guidata(hObject,handles);
-plot_function(hObject);
+guidata(hObject, handles);
+change_spectrum(hObject);
+
 
 % --- Executes on button press in up_pushbutton.
 function up_pushbutton_Callback(hObject, eventdata)
@@ -222,15 +253,13 @@ if handles.chosen_spectrum > 1
     set(handles.down_pushbutton,'Enable','on');
 end
 
-set(handles.chosen_spec_text, 'String', ...
-    sprintf('Chosen spectrum: %d', handles.chosen_spectrum), ...
-    'BackgroundColor', 'green');
-guidata(hObject,handles);
-plot_function(hObject);
+guidata(hObject, handles);
+change_spectrum(hObject);
+
 
 % --- Executes during object creation, after setting all properties.
 function times_edit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to kak_slider_min_edit (see GCBO)
+% hObject    handle to times_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -241,7 +270,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 function times_edit_Callback(hObject, eventdata)
-% hObject    handle to kak_slider_step_edit (see GCBO)
+% hObject    handle to times_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -250,11 +279,19 @@ function times_edit_Callback(hObject, eventdata)
 
 handles = guidata(hObject);
 
-handles.std_times = str2double(get(hObject, 'String'));
+ii = handles.chosen_spectrum;
+
+if handles.all
+    handles.std_times = str2double(get(hObject, 'String'));
+    handles.recalculate = ones(handles.N_spectra, 1);
+else
+    handles.std_times_separate(ii) = str2double(get(hObject, 'String'));
+    handles.recalculate(ii) = true;
+end
 
 guidata(hObject, handles);
   
-treat_data(hObject);
+treat_data(hObject, ii);
 
 plot_function(hObject);
 
@@ -275,173 +312,145 @@ function extra_del_points_edit_Callback(hObject, eventdata)
 
 handles = guidata(hObject);
 
-handles.extra_del_points = str2double(get(hObject, 'String'));
+ii = handles.chosen_spectrum;
+
+if handles.all
+    handles.extra_del_points = str2double(get(hObject, 'String'));
+    handles.recalculate = ones(handles.N_spectra, 1);
+else
+    handles.extra_del_points_separate(ii) = str2double(get(hObject, 'String'));
+    handles.recalculate(ii) = true;
+end
 
 guidata(hObject, handles);
-  
-treat_data(hObject);
+
+treat_data(hObject, ii);
 
 plot_function(hObject);
 
-function treat_data(hObject)
+
+% --- Executes on button press in all_checkbox.
+function all_checkbox_Callback(hObject, eventdata)
+% hObject    handle to all_checkbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+handles = guidata(hObject);
+
+handles.all = get(hObject, 'Value');
+
+N = handles.N_spectra;
+ii = handles.chosen_spectrum;
+
+if ~handles.all_used && ~handles.all
+    handles.std_times_separate = ones(N, 1) * handles.std_times;
+    handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
+end
+
+if handles.all
+    handles.recalculate =...
+        ~handles.calculated_once...
+        | (handles.std_times_separate ~= handles.std_times * ones(N, 1))...
+        | (handles.extra_del_points_separate ~= handles.extra_del_points * ones(N, 1));
+else
+    handles.recalculate(ii) =...
+        (handles.std_times_separate(ii) ~= handles.std_times)...
+        | (handles.extra_del_points_separate(ii) ~= handles.extra_del_points);
+end
+
+handles.all_used = true;
+
+guidata(hObject, handles);
+
+change_spectrum(hObject);
+
+
+function treat_data(hObject, spc_no)
 
 handles = guidata(hObject);
 
-[corrIdx, handles.avg_spc, handles.std_spc] = ...
-    handles.find_corrIdx(handles.x_scale, handles.spectra_orig, handles.std_times);
+ii = spc_no;
 
-% correction of false spikes caused by influence of spike on the average
-% spectrum
+handles.calculated_once(ii) = true;
 
-% iteration over the spectra
-for ii = 1:handles.N_spectra
-    if ~isempty(corrIdx{ii}) % controll, if there is any spike in
-        % subtracting identified spikes from the spectrum
-        corrSpc = handles.spectra_orig;
-        for jj = 1:size(corrIdx{ii},2)
-            if corrIdx{ii}{jj}(1) > handles.extra_del_points
-                idx1 = corrIdx{ii}{jj}(1)-handles.extra_del_points;
-            else
-                idx1 = 1;
-            end
-            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
-                idx2 = corrIdx{ii}{jj}(end)+handles.extra_del_points;
-            else
-                idx2 = length(handles.x_scale);
-            end
-            corrSpc(idx1:idx2,ii) = handles.avg_spc(idx1:idx2,ii);
+N = handles.N_spectra;
+
+if handles.all
+    std_times = handles.std_times;
+    extra_del_points = handles.extra_del_points;
+else
+    std_times = handles.std_times_separate(ii);
+    extra_del_points = handles.extra_del_points_separate(ii);
+end
+
+[corrIdx, handles.avg_spc(:,ii), handles.std_spc(ii)] = ...
+        handles.find_corrIdx(handles.x_scale, handles.spectra_orig, ii, std_times);
+
+if ~isempty(corrIdx) % controll, if there is any spike in
+    % subtracting identified spikes from the spectrum
+    handles.spectra_corr(:,ii) = handles.spectra_orig(:,ii);
+    for jj = 1:size(corrIdx, 2)
+        if corrIdx{jj}(1) > extra_del_points
+            idx1 = corrIdx{jj}(1) - extra_del_points;
+        else
+            idx1 = 1;
         end
-        
-        % finding spikes in the data set with ii-th spectrum corrected for
-        % spikes
-        corrIdx2 = ...
-            handles.find_corrIdx(handles.x_scale, corrSpc, handles.std_times);
-        
-        otherIdx = setdiff(1:handles.N_spectra,ii);
-        
-        % iteration on all spikes
-        for jj = 1:size(corrIdx{ii},2)
-            currN = 0; % number of spectra, which contained spike before
-            % correction of spectrum ii but do not contain it after
-            % correction of this spectrum
-            kkll = [];
-            
-            % iteration over all the other spectra
-            for kk = otherIdx
-                if ~isempty(corrIdx{kk}) % control, if there is any spike
-                    % in this spectrum
-                    success = false; % true, if there is a spike in the
-                    % spectrum kk on the same position as the spike jj in
-                    % the spectrum ii
-                    
-                    ll = 1; % iterates oves all spikes in the other spectrum
-                    kkll2 = [];
-%                     while ll <= size(corrIdx{kk},2) && ~success
-                    while ll <= size(corrIdx{kk},2)
-                        if ~isempty(intersect(corrIdx{kk}{ll}, corrIdx{ii}{jj}))
-                            success = true;
-                            kkll2 = [kkll2; kk, ll]; % index of occurence of spike
-                            % at the same position in the spectrum kk
-                            % as in the spectrum ii
-                        end
-                        ll = ll + 1;
-                    end
-                    
-                    % if the spike jj of the spectrum ii was found also
-                    % in the spectrum kk
-                    if success
-                        % and is not found in the spectrum kk after
-                        % subtraction of spikes from the spectrum ii
-                        % increase the number of false spikes currN
-                        % and save the index of the spike in the kk
-                        % spectrum
-                        if isempty(corrIdx2{kk})
-                            kkll = [kkll; kkll2];
-                            currN = currN + 1;
-                        else
-                            ll = 1;
-                            falsespike = true;
-                            
-                            while ll <= size(corrIdx2{kk},2) && falsespike
-                                if ~isempty(intersect(corrIdx{kk}{ll}, corrIdx{ii}{jj}))
-                                    falsespike = false;
-                                end
-                                ll = ll + 1;
-                            end
-                            if falsespike
-                                kkll = [kkll; kkll2];
-                                currN = currN + 1;
-                            end
-                        end
-                    end
-                end
-            end
-            % if there is detected false spike in more than or equal to
-            % the threshold handles.minN
-            if currN >= handles.minN
-                % remove them from the other spectra
-                mm = 1;
-                while mm <= size(kkll, 1)
-                    notSpikeIdx = 1:size(corrIdx{kkll(mm,1)},2);
-                    currkk = kkll(mm,1);
-                    samespike = true;
-                    while samespike
-                        notSpikeIdx = setdiff(notSpikeIdx,kkll(mm,2));
-                        if mm < size(kkll, 1) && currkk == kkll(mm+1,1)
-                            mm = mm + 1;
-                        else
-                            samespike = false;
-                        end
-                    end
-                    tempCorrIdx = corrIdx{kkll(mm,1)};
-                    corrIdx{kkll(mm,1)} = {};
-                    if ~isempty(notSpikeIdx)
-                        for nn = 1:length(notSpikeIdx)
-                            corrIdx{kkll(mm,1)}{nn} = tempCorrIdx{notSpikeIdx(nn)};
-                        end
-                    end
-                    mm = mm + 1;
-                end
-            end
+        if corrIdx{jj}(end) < length(handles.x_scale) - extra_del_points + 1
+            idx2 = corrIdx{jj}(end) + extra_del_points;
+        else
+            idx2 = length(handles.x_scale);
         end
+        handles.spectra_corr(idx1:idx2,ii) = handles.avg_spc(idx1:idx2,ii);
     end
 end
 
-% construction of corrected spectra
-handles.spectra_corr = handles.spectra_orig;
-
-for ii = 1:handles.N_spectra
-    if ~isempty(corrIdx{ii}) % controll, if there is any spike in
-        for jj = 1:size(corrIdx{ii},2)
-            if corrIdx{ii}{jj}(1) > handles.extra_del_points
-                idx1 = corrIdx{ii}{jj}(1)-handles.extra_del_points;
-            else
-                idx1 = 1;
-            end
-            if corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
-                idx2 = corrIdx{ii}{jj}(end)+handles.extra_del_points;
-            else
-                idx2 = length(handles.x_scale);
-            end
-            handles.spectra_corr(idx1:idx2,ii) = handles.avg_spc(idx1:idx2,ii);
-        end
-    end
-end
-
-handles.corrIdx = corrIdx;
+handles.corrIdx{ii} = corrIdx;
+handles.recalculate(ii) = false;
 
 guidata(hObject,handles);
+
+
+function change_spectrum(hObject)
+
+handles = guidata(hObject);
+
+ii = handles.chosen_spectrum;
+
+set(handles.chosen_spec_text, 'String', sprintf('Chosen spectrum: %d', ii), ...
+    'BackgroundColor', 'green');
+if handles.all
+    set(handles.times_edit, 'String', num2str(handles.std_times));
+    set(handles.extra_del_points_edit, 'String', num2str(handles.extra_del_points));
+else
+    set(handles.times_edit, 'String', num2str(handles.std_times_separate(ii)));
+    set(handles.extra_del_points_edit, 'String', num2str(handles.extra_del_points_separate(ii)));
+end
+
+guidata(hObject, handles);
+
+if handles.recalculate(ii)
+    treat_data(hObject, ii);
+end
+
+plot_function(hObject);
+
+
 
 function plot_function(hObject)
 
 handles = guidata(hObject);
 
+ii = handles.chosen_spectrum;
+
 cla(handles.main_axes);
 
-ii = handles.chosen_spectrum;
+if handles.all
+    std_times = handles.std_times;
+else
+    std_times = handles.std_times_separate(ii);
+end
+
 pH(1) = plot(handles.x_scale, handles.avg_spc(:,ii),'-k');
 hold on;
-plot(handles.x_scale, handles.avg_spc(:,ii)+handles.std_times*handles.std_spc(ii),':k');
+plot(handles.x_scale, handles.avg_spc(:,ii) + std_times * handles.std_spc(ii),':k');
 
 pH(end + 1) = plot(handles.x_scale, handles.spectra_orig(:,ii),'-b');
 if ~isempty(handles.corrIdx{ii})

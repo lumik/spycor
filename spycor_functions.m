@@ -80,29 +80,27 @@ else
  end
 end
 
-function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, times)
-avg_y = y;
+function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times)
+% [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times)
+% Finds groups of adjacent indices, which are more deviated from the average
+% than the times * mean(stdev in the corresponding values of the rest of the spectra (y)).
 N = size(y, 2);
-std_y = zeros(N,1);
-corrIdx = cell(N,1);
 
-for ii = 1:N
-    idx = setdiff(1:N,ii);
-    avg_y(:,ii) = mean(y(:,idx), 2);
-    std_y(ii) = mean(std(y(:,idx), 0, 2));
+idx = setdiff(1:N,ii);
+avg_y = mean(y(:,idx), 2);
+std_y = mean(std(y(:,idx), 0, 2));
 
-    corrIdxVec = find(y(:, ii) > avg_y(:,ii) + times * std_y(ii));
-    kk = 1;
-    dx = (x(2) - x(1)) * 1.5;
-    corrIdx{ii} = {};
-    if ~isempty(corrIdxVec)
-        corrIdx{ii}{kk} = [];
-        for jj = 1:length(corrIdxVec)
-            corrIdx{ii}{kk} = [corrIdx{ii}{kk}; corrIdxVec(jj)];
-            if (jj < length(corrIdxVec)) && (x(corrIdxVec(jj+1)) - x(corrIdxVec(jj)) > dx)
-                kk = kk + 1;
-                corrIdx{ii}{kk} = [];
-            end
+corrIdxVec = find(y(:,ii) > avg_y + times * std_y);
+kk = 1;
+dx = (x(2) - x(1)) * 1.5;
+corrIdx = {};
+if ~isempty(corrIdxVec)
+    corrIdx{kk} = [];
+    for jj = 1:length(corrIdxVec)
+        corrIdx{kk} = [corrIdx{kk}; corrIdxVec(jj)];
+        if (jj < length(corrIdxVec)) && (x(corrIdxVec(jj+1)) - x(corrIdxVec(jj)) > dx)
+            kk = kk + 1;
+            corrIdx{kk} = [];
         end
     end
 end
