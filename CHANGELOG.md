@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased](https://github.com/lumik/spycor/compare/v0.1.0...develop)
 
 ### Added
+- [Enahncement #6](https://github.com/lumik/spycor/issues/6): Enabled possibility of only limited number of adjacent
+  spectra to be used for spike detection.
 - [Enhancement #2](https://github.com/lumik/spycor/issues/2): Enabled different settings for individual spectra.
-- `all` button, which resets settings for idndividual spectra to the settings of the current spectrum.
+- `all` button, which resets settings for individual spectra to the settings of the current spectrum.
 
 ### Changed
 - `around:` renamed to `extra:`

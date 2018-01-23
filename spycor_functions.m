@@ -1,6 +1,6 @@
 function h=textrapol_functions
 
-h={@spycor_load, @find_corrIdx};
+h={@spycor_load, @find_corrIdx, @vec2str};
 
 function [status,filename,file_path,spectra]=spycor_load(do_test,start_directory,...
 FilterSpec,dialog_title,multiselect)
@@ -80,13 +80,15 @@ else
  end
 end
 
-function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times)
-% [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times)
+function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times, extent)
+% [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times, extent)
 % Finds groups of adjacent indices, which are more deviated from the average
-% than the times * mean(stdev in the corresponding values of the rest of the spectra (y)).
+% than the times * mean(stdev in the corresponding values of the surrounding spectra (y) specified by extent).
 N = size(y, 2);
 
-idx = setdiff(1:N,ii);
+% find indices of spectra for average calculation
+idx = setdiff(extent(extent > 0 & extent <= N), ii);
+
 avg_y = mean(y(:,idx), 2);
 std_y = mean(std(y(:,idx), 0, 2));
 
@@ -103,4 +105,83 @@ if ~isempty(corrIdxVec)
             corrIdx{kk} = [];
         end
     end
+end
+
+function strvec = vec2str(vec)
+% Converts vector to string
+
+NO = 3;  % minimal number of elements for x:y notation
+DNO = 4;  % minimal number of elements for x:y:z notation
+N = length(vec);
+if N == 1
+    strvec = num2str(vec);
+    return;
+else
+    brackets = false;
+    ino = 0;  % counter for x:y notation
+    idno = 0;  % counter for x:y:z notation
+    d = vec(2) - vec(1);  % difference
+    strvec = num2str(vec(1));
+    for ii = 2:N
+        % if the difference from previous is one
+        if vec(ii) - vec(ii - 1) == 1 && idno == 0
+            ino = ino + 1;
+        % if the difference from previous is d
+        elseif vec(ii) - vec(ii - 1) == d
+            idno = idno + 1;
+        % leap
+        else
+            brackets = true;
+            % if continous sequence satisfactory long
+            if ino >= NO
+                strvec = sprintf('%s:%d', strvec, vec(ii - 1));
+            % if continous sequence with difference satisfactory long
+            elseif idno >= DNO
+                strvec = sprintf('%s:%d:%d', strvec, d, vec(ii - 1));
+            % if continous sequence is not satisfactory long
+            else
+                % continous sequence
+                if ino > 0
+                    count = ino;
+                % other cases
+                else
+                    count = idno;
+                end
+                for jj = (ii - count):ii - 1
+                    strvec = sprintf('%s, %d', strvec, vec(jj));
+                end
+            end
+            strvec = sprintf('%s, %d', strvec, vec(ii));
+            if ii < N
+                d = vec(ii + 1) - vec(ii);
+            end
+            ino = 0;
+            idno = 0;
+        end
+    end
+    % treat the last iteration
+    % if continous sequence satisfactory long
+    if ino >= NO
+        strvec = sprintf('%s:%d', strvec, vec(N));
+    % if continous sequence with difference satisfactory long
+    elseif idno >= DNO
+        strvec = sprintf('%s:%d:%d', strvec, d, vec(N));
+    % if continous sequence is not satisfactory long
+    else
+        brackets = true;
+        % continous sequence
+        if ino > 0
+            count = ino;
+        % other cases
+        else
+            count = idno;
+        end
+        for jj = (N - count):N
+            strvec = sprintf('%s, %d', strvec, vec(jj));
+        end
+    end
+end
+
+if brackets
+    strvec = sprintf('[%s]', strvec);
 end

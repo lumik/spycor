@@ -12,19 +12,24 @@ handles.current_directory = pwd; % nastaveni aktualniho adresare
 handles.filepath = handles.current_directory;
 handles.filename = '';
 
+handles.N_spectra_limit = 3;  % The least number of spectra that can be treated.
+
 handles.spectra_orig = zeros(2,2);
 handles.spectra_corr = handles.spectra_orig;
 handles.avg_spc = handles.spectra_orig;
 handles.std_spc = zeros(size(handles.spectra_orig, 2), 1);
 handles.corrIdx = cell(size(handles.spectra_orig, 2), 1);
 handles.N_spectra = 1;
-handles.recalculate = ones(1, 1);
+handles.recalculate = true(1, 1);
 handles.calculated_once = zeros(1, 1);
 
 handles.std_times = 30;
 handles.std_times_separate = ones(1, 1) * handles.std_times;
 handles.extra_del_points = 3;
 handles.extra_del_points_separate = ones(1, 1) * handles.extra_del_points;
+handles.extent = 0;
+handles.extent_separate = cell(1, 1);
+handles.extent_separate(:) = {handles.extent};
 handles.all = true;
 handles.all_used = false;  % if all spectra had the same values of settings and has not been set to idividual settings
 % yet, the default value for them will be the same as the settings for all spectra.
@@ -32,7 +37,7 @@ handles.chosen_spectrum = 1;
 
 % functional handles
 h=spycor_functions;
-[handles.spycor_load, handles.find_corrIdx]=h{:};
+[handles.spycor_load, handles.find_corrIdx, handles.vec2str]=h{:};
 
 handles.file_menu = uimenu('Label','File');
 handles.load_menuitem = uimenu(handles.file_menu, 'Label','Load','Accelerator','O',...
@@ -78,6 +83,11 @@ handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','P
     'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
     'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
 
+handles.extent_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.68 .15 .115 .8],...
+    'String', 'extent', 'Parent', handles.settings_panel,...
+    'TooltipString', 'Sets which neighbour spectra are used for spike detection',...
+    'FontSize', 10, 'Callback', @extent_pushbutton_Callback);
+
 if handles.all
     all_pushbutton_enable = 'off';
 else
@@ -119,7 +129,11 @@ if status==0 % Pokud dojde k chybe pri nacitani dat (stisknuti cancel),
   waitfor(h_errordlg);
 else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
   % predchozi data a smazou predchozi fity).
-
+  if size(data_orig, 2) < handles.N_spectra_limit + 1
+    h_errordlg=errordlg(sprintf('The file must contain %d spectra at least!', handles.N_spectra_limit));
+    waitfor(h_errordlg);
+    return;
+  end
   handles.x_scale = data_orig(:,1);
   handles.spectra_orig = data_orig(:,2:end);
   N = size(handles.spectra_orig, 2);
@@ -131,11 +145,13 @@ else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
   handles.corrIdx = cell(N, 1);
 
   handles.chosen_spectrum = 1;
-  handles.recalculate = ones(N, 1);
+  handles.recalculate = true(N, 1);
   handles.calculated_once = zeros(N, 1);
 
-  handles.std_times_separate = ones(handles.N_spectra, 1) * handles.std_times;
-  handles.extra_del_points_separate = ones(handles.N_spectra, 1) * handles.extra_del_points;
+  handles.std_times_separate = ones(N, 1) * handles.std_times;
+  handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
+  handles.extent_separate = cell(N, 1);
+  handles.extent_separate(:) = {handles.extent};
 
 
   set(handles.select_spec_panel, 'Visible','on');
@@ -292,7 +308,7 @@ ii = handles.chosen_spectrum;
 
 if handles.all
     handles.std_times = str2double(get(hObject, 'String'));
-    handles.recalculate = ones(handles.N_spectra, 1);
+    handles.recalculate = true(handles.N_spectra, 1);
 else
     handles.std_times_separate(ii) = str2double(get(hObject, 'String'));
     handles.recalculate(ii) = true;
@@ -325,7 +341,7 @@ ii = handles.chosen_spectrum;
 
 if handles.all
     handles.extra_del_points = str2double(get(hObject, 'String'));
-    handles.recalculate = ones(handles.N_spectra, 1);
+    handles.recalculate = true(handles.N_spectra, 1);
 else
     handles.extra_del_points_separate(ii) = str2double(get(hObject, 'String'));
     handles.recalculate(ii) = true;
@@ -336,6 +352,122 @@ guidata(hObject, handles);
 treat_data(hObject, ii);
 
 plot_function(hObject);
+
+
+% --- Executes on button press in extent_pushbutton.
+function extent_pushbutton_Callback(hObject, eventdata, defans)
+% hObject    handle to extent_pushbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% defams     defaut answer
+handles = guidata(hObject);
+
+ii = handles.chosen_spectrum;
+N_limit = handles.N_spectra_limit;
+N = handles.N_spectra;
+
+if nargin < 3
+    if handles.all
+        defans_var = handles.extent;
+    else
+        defans_var = handles.extent_separate{ii};
+    end
+    if length(defans_var) == 1 && defans_var == 0
+        defans = {num2str(defans_var)};
+    else
+        % choose default answer to shorter one from range with zero or without it
+        defans1 = handles.vec2str(defans_var);
+        defans2 = handles.vec2str(sort([defans_var, 0]));
+        if length(defans1) > length(defans2)
+            defans = {defans2};
+        else
+            defans = {defans1};
+        end
+    end
+end
+
+prompt = {sprintf(['Specify range of surrounding spectra, which is used to detect spikes.\n'...
+                   'Use MatLab vector creation notation, for example, if you want to use\n'...
+                   '3 spectra from the left and 2 spectra from the right, use "-3:2", for\n'...
+                   'spectra -5, -3, -2, 1, 2, 3 use "[-5, -3, -2, 1:3]". If you want to use\n'...
+                   'all the other spectra, use "0". Edge cases will be cropped, so be sure\n'...
+                   'that there are at least %d surrounding spectra used for each spectrum.'],...
+    N_limit - 1)};
+dlg_title = 'Selection of surrounding spectra';
+num_lines = 1;
+options.Resize = 'on';
+extent_text = inputdlg(prompt, dlg_title, num_lines, defans, options);
+
+% Test cancel
+if isequal(extent_text,{})
+    return;
+end
+
+% Test input validity
+try
+    extent = eval(extent_text{1});
+    if isempty(extent) || ~isnumeric(extent) || ~isvector(extent) || any(rem(extent, 1))
+        msgID = 'extent:BadInput';
+        msg = 'Extent must be MatLab vector of integers.';
+        exception = MException(msgID, msg);
+        throw(exception)
+    end
+    if length(extent) > 1 || extent ~= 0
+        extent = sort(setdiff(extent, 0));  % make extent sorted set of unique values
+        % reduce extent to only valid surrounding spectra and test if minimal number of spectra is greater then N_limit
+        if handles.all
+            n_min = 2 * (N - 1);  % initialize to maximal number of surrounding spectra on both sides
+            extent = extent((extent > -N) & (extent < N));  % reduce extent only to relevant numbers
+            if length(extent) == 2 * (N - 1)  % test if extend contains all possibly surrounding spectra
+                extent = 0;
+            else  % find minimal overlap of extend with spectral set
+                for jj = 1:N
+                    extent_length = length(extent((extent + jj > 0) & (extent + jj <= N)));
+                    if extent_length < n_min
+                        n_min = extent_length;
+                    end
+                end
+            end
+            msg = sprintf(['Extent must have at least %d surrounding spectra for all treated spectra '...
+                '(including corner cases).'], N_limit - 1);
+        else  % not handles.all
+            extent = extent((extent + ii > 0) & (extent + ii <= N));  % reduce extent only to relevant numbers
+            n_min = length(extent);
+            if n_min == N - 1  % test if extend contains all possibly surrounding spectra
+                extent = 0;
+            end
+            msg = sprintf('Extent must have at least %d surrounding spectra.', N_limit - 1);
+        end
+        if (n_min < N_limit - 1)
+            msgID = 'extent:BadInput';
+            exception = MException(msgID, msg);
+            throw(exception)
+        end
+    end
+catch ME
+    getReport(ME)
+    h_errordlg=errordlg(sprintf('%s', ME.message), 'Input error');
+    waitfor(h_errordlg);
+    extent_pushbutton_Callback(hObject, eventdata, extent_text)
+    return
+end
+
+% save extent
+if handles.all
+    if isequal(extent, handles.extent)
+        return;
+    end
+    handles.recalculate = true(N, 1);
+    handles.extent = extent;
+else
+    if isequal(extent, handles.extent_separate{ii})
+        return;
+    end
+    handles.recalculate(ii) = true;
+    handles.extent_separate{ii} = extent;
+end
+
+guidata(hObject, handles);
+change_spectrum(hObject);
 
 
 % --- Executes on button press in all_checkbox.
@@ -349,22 +481,26 @@ handles.all = get(hObject, 'Value');
 N = handles.N_spectra;
 ii = handles.chosen_spectrum;
 
-if ~handles.all_used && ~handles.all
-    handles.std_times_separate = ones(N, 1) * handles.std_times;
-    handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
-end
-
 if handles.all
     handles.recalculate =...
         ~handles.calculated_once...
         | (handles.std_times_separate ~= handles.std_times * ones(N, 1))...
         | (handles.extra_del_points_separate ~= handles.extra_del_points * ones(N, 1));
+    for jj = 1:N
+        handles.recalculate(jj) = handles.recalculate(jj) | ~isequal(handles.extent_separate{jj}, handles.extent);
+    end
 
     set(handles.all_pushbutton, 'Enable', 'off')
 else
+    if ~handles.all_used
+        handles.std_times_separate = ones(N, 1) * handles.std_times;
+        handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
+        handles.extent_separate(:) = {handles.extent};
+    end
     handles.recalculate(ii) =...
         (handles.std_times_separate(ii) ~= handles.std_times)...
-        | (handles.extra_del_points_separate(ii) ~= handles.extra_del_points);
+        | (handles.extra_del_points_separate(ii) ~= handles.extra_del_points)...
+        | ~isequal(handles.extent_separate{ii}, handles.extent);
 
     set(handles.all_pushbutton, 'Enable', 'on')
 end
@@ -376,7 +512,7 @@ guidata(hObject, handles);
 change_spectrum(hObject);
 
 
-% --- Executes on button press in choose_spec_pushbutton.
+% --- Executes on button press in all_pushbutton.
 function all_pushbutton_Callback(hObject, eventdata)
 % hObject    handle to all_pushbutton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -387,6 +523,12 @@ ii = handles.chosen_spectrum;
 handles.recalculate =...
     (handles.std_times_separate ~= handles.std_times_separate(ii))...
     | (handles.extra_del_points_separate ~= handles.extra_del_points_separate(ii));
+for jj = 1:handles.N_spectra
+    if ~isequal(handles.extent_separate{jj}, handles.extent_separate{ii})
+        handles.recalculate(jj) = true;
+        handles.extent_separate{jj} = handles.extent_separate{ii};
+    end
+end
 handles.std_times_separate = ones(handles.N_spectra, 1) * handles.std_times_separate(ii);
 handles.extra_del_points_separate = ones(handles.N_spectra, 1) * handles.extra_del_points_separate(ii);
 guidata(hObject, handles);
@@ -405,14 +547,23 @@ N = handles.N_spectra;
 if handles.all
     std_times = handles.std_times;
     extra_del_points = handles.extra_del_points;
+    if handles.extent
+        extent = handles.extent + ii;
+    else
+        extent = [1:(ii - 1), (ii + 1):N];
+    end
 else
     std_times = handles.std_times_separate(ii);
     extra_del_points = handles.extra_del_points_separate(ii);
+    if handles.extent
+        extent = handles.extent_separate{ii} + ii;
+    else
+        extent = [1:(ii - 1), (ii + 1):N];
+    end
 end
 
 [corrIdx, handles.avg_spc(:,ii), handles.std_spc(ii)] = ...
-        handles.find_corrIdx(handles.x_scale, handles.spectra_orig, ii, std_times);
-
+        handles.find_corrIdx(handles.x_scale, handles.spectra_orig, ii, std_times, extent);
 if ~isempty(corrIdx) % controll, if there is any spike in
     % subtracting identified spikes from the spectrum
     handles.spectra_corr(:,ii) = handles.spectra_orig(:,ii);
