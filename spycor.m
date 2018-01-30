@@ -30,6 +30,9 @@ handles.extra_del_points_separate = ones(1, 1) * handles.extra_del_points;
 handles.extent = 0;
 handles.extent_separate = cell(1, 1);
 handles.extent_separate(:) = {handles.extent};
+handles.range = [1, 1];  % indices of selected range
+handles.extent_separate = cell(1, 1);
+handles.extent_separate(:) = {handles.range};
 handles.all = true;
 handles.all_used = false;  % if all spectra had the same values of settings and has not been set to idividual settings
 % yet, the default value for them will be the same as the settings for all spectra.
@@ -83,6 +86,10 @@ handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','P
     'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
     'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
 
+handles.range_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.55 .15 .115 .8],...
+    'String', 'range', 'Parent', handles.settings_panel,...
+    'TooltipString', 'Sets used spectral range',...
+    'FontSize', 10, 'Callback', @range_pushbutton_Callback);
 handles.extent_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.68 .15 .115 .8],...
     'String', 'extent', 'Parent', handles.settings_panel,...
     'TooltipString', 'Sets which neighbour spectra are used for spike detection',...
@@ -150,9 +157,12 @@ else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
 
   handles.std_times_separate = ones(N, 1) * handles.std_times;
   handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
+  handles.extent = 0;
   handles.extent_separate = cell(N, 1);
   handles.extent_separate(:) = {handles.extent};
-
+  handles.range = [1, length(handles.x_scale)];
+  handles.range_separate = cell(N, 1);
+  handles.range_separate(:) = {handles.range};
 
   set(handles.select_spec_panel, 'Visible','on');
   set(handles.settings_panel, 'Visible','on');
@@ -254,7 +264,7 @@ if handles.chosen_spectrum <= 2
 else
     handles.chosen_spectrum = handles.chosen_spectrum - 1;
 end
-if handles.chosen_spectrum < handles.N_spectra;
+if handles.chosen_spectrum < handles.N_spectra
     set(handles.up_pushbutton,'Enable','on');
 end
 
@@ -352,6 +362,111 @@ guidata(hObject, handles);
 treat_data(hObject, ii);
 
 plot_function(hObject);
+
+
+% --- Executes on button press in range_pushbutton.
+function range_pushbutton_Callback(hObject, eventdata, defans)
+% hObject    handle to range_pushbutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% defams     defaut answer
+handles = guidata(hObject);
+ii = handles.chosen_spectrum;
+N = handles.N_spectra;
+
+if nargin < 3
+    if handles.all
+        defans_var = handles.range;
+    else
+        defans_var = handles.range_separate{ii};
+    end
+    if isempty(defans_var)
+        defans = {''};
+    else
+        defans = sprintf('%d, %d', handles.x_scale(defans_var(1)), handles.x_scale(defans_var(2)));
+        for jj = 3:2:length(defans_var)
+            defans = sprintf('%s, %d, %d', defans, handles.x_scale(defans_var(jj)),...
+                handles.x_scale(defans_var(jj + 1)));
+        end
+        defans = {defans};
+    end
+end
+
+prompt = {sprintf(['Specify x range of treatment. Beware that this drops the results from\n'...
+                   'previous range! The range should be specified as the pairs of limits\n'...
+                   'of desired subranges, for example 500, 700, 1230, 1600 means\n'...
+                   '<500, 700> U <1230, 1600>. Empty field excludes spectrum from treatment.\n'...
+                   'The spectral limits are: <%d, %d>'],...
+    handles.x_scale(1), handles.x_scale(end))};
+dlg_title = 'Selection of spectral range';
+num_lines = 1;
+options.Resize = 'on';
+range_text = inputdlg(prompt, dlg_title, num_lines, defans, options);
+
+% Test cancel
+if isequal(range_text,{})
+    return;
+end
+
+% Test input validity
+try
+    range_vals = eval(sprintf('[%s]', range_text{1}));
+    if ~isempty(range_vals) && (~isnumeric(range_vals) || ~isvector(range_vals) || rem(length(range_vals), 2))
+        msgID = 'range:BadInput';
+        msg = 'Range must be even number of numbers.';
+        exception = MException(msgID, msg);
+        throw(exception)
+    end
+    % convert ranges to indices and test if they contain at least one point
+    range_inds = [];
+    for jj = 1:2:length(range_vals)
+        x = handles.x_scale(handles.x_scale > range_vals(jj) & handles.x_scale < range_vals(jj + 1));
+        if ~isempty(x)
+            [Y, I1] = min(abs(handles.x_scale - range_vals(jj)));
+            [Y, I2] = min(abs(handles.x_scale - range_vals(jj + 1)));
+            range_inds = [range_inds, I1:I2];
+        end
+    end
+    range_inds = unique(range_inds, 'sorted');
+    if (~isempty(range_vals) && isempty(range_inds))
+        msgID = 'range:BadInput';
+        exception = MException(msgID, 'In this range aren''t any spectral points. Please, specify correct range.');
+        throw(exception)
+    end
+catch ME
+    getReport(ME)
+    h_errordlg=errordlg(sprintf('%s', ME.message), 'Input error');
+    waitfor(h_errordlg);
+    range_pushbutton_Callback(hObject, eventdata, range_text)
+    return
+end
+
+if ~isempty(range_inds)
+    range = range_inds(1);
+    rangeinds = 1:(length(range_inds) - 1);
+    rangeinds = rangeinds(diff(range_inds)~=1);
+    rangeinner = [range_inds(rangeinds); range_inds(rangeinds + 1)];
+    range = [range, rangeinner(:)', range_inds(end)];
+else
+    range = [];
+end
+
+% save range
+if handles.all
+    if isequal(range, handles.range)
+        return;
+    end
+    handles.recalculate = true(N, 1);
+    handles.range = range;
+else
+    if isequal(range, handles.range_separate{ii})
+        return;
+    end
+    handles.recalculate(ii) = true;
+    handles.range_separate{ii} = range;
+end
+
+guidata(hObject, handles);
+change_spectrum(hObject);
 
 
 % --- Executes on button press in extent_pushbutton.
@@ -487,7 +602,8 @@ if handles.all
         | (handles.std_times_separate ~= handles.std_times * ones(N, 1))...
         | (handles.extra_del_points_separate ~= handles.extra_del_points * ones(N, 1));
     for jj = 1:N
-        handles.recalculate(jj) = handles.recalculate(jj) | ~isequal(handles.extent_separate{jj}, handles.extent);
+        handles.recalculate(jj) = handles.recalculate(jj) | ~isequal(handles.extent_separate{jj}, handles.extent)...
+             | ~isequal(handles.range_separate{jj}, handles.range);
     end
 
     set(handles.all_pushbutton, 'Enable', 'off')
@@ -496,11 +612,13 @@ else
         handles.std_times_separate = ones(N, 1) * handles.std_times;
         handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
         handles.extent_separate(:) = {handles.extent};
+        handles.range_separate(:) = {handles.range};
     end
     handles.recalculate(ii) =...
         (handles.std_times_separate(ii) ~= handles.std_times)...
         | (handles.extra_del_points_separate(ii) ~= handles.extra_del_points)...
-        | ~isequal(handles.extent_separate{ii}, handles.extent);
+        | ~isequal(handles.extent_separate{ii}, handles.extent)...
+        | ~isequal(handles.range_separate{ii}, handles.range);
 
     set(handles.all_pushbutton, 'Enable', 'on')
 end
@@ -528,6 +646,10 @@ for jj = 1:handles.N_spectra
         handles.recalculate(jj) = true;
         handles.extent_separate{jj} = handles.extent_separate{ii};
     end
+    if ~isequal(handles.range_separate{jj}, handles.range_separate{ii})
+        handles.recalculate(jj) = true;
+        handles.range_separate{jj} = handles.range_separate{ii};
+    end
 end
 handles.std_times_separate = ones(handles.N_spectra, 1) * handles.std_times_separate(ii);
 handles.extra_del_points_separate = ones(handles.N_spectra, 1) * handles.extra_del_points_separate(ii);
@@ -535,7 +657,6 @@ guidata(hObject, handles);
 
 
 function treat_data(hObject, spc_no)
-
 handles = guidata(hObject);
 
 ii = spc_no;
@@ -543,6 +664,7 @@ ii = spc_no;
 handles.calculated_once(ii) = true;
 
 N = handles.N_spectra;
+handles.spectra_corr(:,ii) = handles.spectra_orig(:,ii);
 
 if handles.all
     std_times = handles.std_times;
@@ -552,6 +674,7 @@ if handles.all
     else
         extent = [1:(ii - 1), (ii + 1):N];
     end
+    range = handles.range;
 else
     std_times = handles.std_times_separate(ii);
     extra_del_points = handles.extra_del_points_separate(ii);
@@ -560,29 +683,42 @@ else
     else
         extent = [1:(ii - 1), (ii + 1):N];
     end
+    range = handles.range_separate{ii};
 end
-
-[corrIdx, handles.avg_spc(:,ii), handles.std_spc(ii)] = ...
-        handles.find_corrIdx(handles.x_scale, handles.spectra_orig, ii, std_times, extent);
-if ~isempty(corrIdx) % controll, if there is any spike in
-    % subtracting identified spikes from the spectrum
-    handles.spectra_corr(:,ii) = handles.spectra_orig(:,ii);
-    for jj = 1:size(corrIdx, 2)
-        if corrIdx{jj}(1) > extra_del_points
-            idx1 = corrIdx{jj}(1) - extra_del_points;
-        else
-            idx1 = 1;
-        end
-        if corrIdx{jj}(end) < length(handles.x_scale) - extra_del_points + 1
-            idx2 = corrIdx{jj}(end) + extra_del_points;
-        else
-            idx2 = length(handles.x_scale);
-        end
-        handles.spectra_corr(idx1:idx2,ii) = handles.avg_spc(idx1:idx2,ii);
+if isempty(range)
+    handles.corrIdx{ii} = {};
+    handles.std_spc(ii) = 0;
+    handles.avg_spc(:,ii) = handles.spectra_orig(:,ii);
+else
+    inds = [];
+    for jj = 1:2:length(range)
+        inds = [inds, range(jj):range(jj + 1)];
     end
+    dx = (handles.x_scale(2) - handles.x_scale(1)) * 1.5;
+    [corrIdx, handles.avg_spc(inds,ii), handles.std_spc(ii)] = ...
+        handles.find_corrIdx(handles.x_scale(inds), handles.spectra_orig(inds,:), dx, ii, std_times, extent);
+    if ~isempty(corrIdx) % controll, if there is any spike in
+        % subtracting identified spikes from the spectrum
+        for jj = 1:size(corrIdx, 2)
+            corrIdx{jj} = inds(corrIdx{jj});  % convert corrIdx from inds indexes to general indexes
+            I1 = corrIdx{jj}(1);
+            range_no = find(range(1:2:end) < I1, 1, 'last');  % identify range number
+            if I1 > range(2 * range_no - 1) + extra_del_points - 1
+                idx1 = I1 - extra_del_points;
+            else
+                idx1 = range(2 * range_no - 1);
+            end
+            I2 = corrIdx{jj}(end);  % convert corrIdx from inds indexes to general indexes
+            if I2 < range(2 * range_no) - extra_del_points + 1
+                idx2 = I2 + extra_del_points;
+            else
+                idx2 = range(2 * range_no);
+            end
+            handles.spectra_corr(idx1:idx2,ii) = handles.avg_spc(idx1:idx2,ii);
+        end
+    end
+    handles.corrIdx{ii} = corrIdx;
 end
-
-handles.corrIdx{ii} = corrIdx;
 handles.recalculate(ii) = false;
 
 guidata(hObject,handles);
@@ -624,33 +760,61 @@ cla(handles.main_axes);
 
 if handles.all
     std_times = handles.std_times;
+    range = handles.range;
 else
     std_times = handles.std_times_separate(ii);
+    range = handles.range_separate{ii};
 end
-
-pH(1) = plot(handles.x_scale, handles.avg_spc(:,ii),'-k');
-hold on;
-plot(handles.x_scale, handles.avg_spc(:,ii) + std_times * handles.std_spc(ii),':k');
-
-pH(end + 1) = plot(handles.x_scale, handles.spectra_orig(:,ii),'-b');
-if ~isempty(handles.corrIdx{ii})
-    for jj = 1:size(handles.corrIdx{ii},2)
-        if handles.corrIdx{ii}{jj}(1) > handles.extra_del_points
-            idx1 = handles.corrIdx{ii}{jj}(1)-handles.extra_del_points;
-        else
-            idx1 = 1;
-        end
-        if handles.corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
-            idx2 = handles.corrIdx{ii}{jj}(end)+handles.extra_del_points;
-        else
-            idx2 = length(handles.x_scale);
-        end
-        pH(3) = plot(handles.x_scale(idx1:idx2), handles.spectra_orig(idx1:idx2,ii),'-r','LineWidth',2);
-        pH(4) = plot(handles.x_scale(idx1:idx2), handles.spectra_corr(idx1:idx2,ii),'-g','LineWidth',2);
-    end
-    legend(pH, {'spc','avg','spike','corrected'},'Location','best');
+if isempty(range)
+    plot(handles.x_scale, handles.avg_spc(:,ii), '-', 'Color', [192, 192, 192] / 255);
 else
-    legend(pH, {'spc','avg'},'Location','best');
+    if range(1) ~= 1
+        cinds = 1:range(1);
+        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        hold on;
+    end
+    for jj = 3:2:length(range)
+        cinds = range(jj - 1):range(jj);
+        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        hold on;
+    end
+    if range(end) ~= length(handles.x_scale)
+        cinds = range(end):length(handles.x_scale);
+        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        hold on;
+    end
+
+    inds = range(1):range(2);
+    pH(1) = plot(handles.x_scale(inds), handles.avg_spc(inds,ii),'-k');
+    hold on;
+    plot(handles.x_scale(inds), handles.avg_spc(inds,ii) + std_times * handles.std_spc(ii), ':k');
+    pH(2) = plot(handles.x_scale(inds), handles.spectra_orig(inds,ii),'-b');
+    for jj = 3:2:length(range)
+        inds = range(jj):range(jj + 1);
+        plot(handles.x_scale(inds), handles.avg_spc(inds,ii),'-k');
+        plot(handles.x_scale(inds), handles.avg_spc(inds,ii) + std_times * handles.std_spc(ii), ':k');
+        plot(handles.x_scale(inds), handles.spectra_orig(inds,ii),'-b');
+    end
+
+    if ~isempty(handles.corrIdx{ii})
+        for jj = 1:size(handles.corrIdx{ii},2)
+            if handles.corrIdx{ii}{jj}(1) > handles.extra_del_points
+                idx1 = handles.corrIdx{ii}{jj}(1)-handles.extra_del_points;
+            else
+                idx1 = 1;
+            end
+            if handles.corrIdx{ii}{jj}(end) < length(handles.x_scale) - handles.extra_del_points + 1
+                idx2 = handles.corrIdx{ii}{jj}(end)+handles.extra_del_points;
+            else
+                idx2 = length(handles.x_scale);
+            end
+            pH(3) = plot(handles.x_scale(idx1:idx2), handles.spectra_orig(idx1:idx2,ii), '-r', 'LineWidth', 2);
+            pH(4) = plot(handles.x_scale(idx1:idx2), handles.spectra_corr(idx1:idx2,ii), '-g', 'LineWidth', 2);
+        end
+        legend(pH, {'spc', 'avg', 'spike', 'corrected'}, 'Location', 'best');
+    else
+        legend(pH, {'spc', 'avg'}, 'Location', 'best');
+    end
 end
 
 xmin = min(handles.x_scale);

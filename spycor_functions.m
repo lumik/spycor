@@ -80,8 +80,8 @@ else
  end
 end
 
-function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times, extent)
-% [corrIdx, avg_y, std_y] = find_corrIdx(x, y, ii, times, extent)
+function [corrIdx, avg_y, std_y] = find_corrIdx(x, y, dx, ii, times, extent)
+% [corrIdx, avg_y, std_y] = find_corrIdx(x, y, dx, ii, times, extent)
 % Finds groups of adjacent indices, which are more deviated from the average
 % than the times * mean(stdev in the corresponding values of the surrounding spectra (y) specified by extent).
 N = size(y, 2);
