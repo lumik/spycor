@@ -1,4 +1,4 @@
-function h=textrapol_functions
+function h=spycor_functions
 
 h={@spycor_load, @find_corrIdx, @vec2str};
 
@@ -64,7 +64,7 @@ else
   spectra=eval(['spectra.' polozky_spektra{1}]); % v souboru "mat" je ulozena
   % pouze jedna promenna (pozadovana spektra)
  end
- if do_test==1 &&  ~issorted(spectra(:,1)) && ~issorted(flipdim(spectra(:,1),1))
+ if do_test==1 &&  ~issorted(spectra(:,1)) && ~issorted(flip(spectra(:,1),1))
   % x-ove hodnoty nejsou setrideny ani vzestupne, ani sestupne -> muze 
   % signalizovat chybu (je nabidnuta moznost spektra vzestupne setridit)
   vypis=['Spectra have unsorted x-values (probably due to the error). '...
@@ -94,7 +94,6 @@ std_y = mean(std(y(:,idx), 0, 2));
 
 corrIdxVec = find(y(:,ii) > avg_y + times * std_y);
 kk = 1;
-dx = (x(2) - x(1)) * 1.5;
 corrIdx = {};
 if ~isempty(corrIdxVec)
     corrIdx{kk} = [];
