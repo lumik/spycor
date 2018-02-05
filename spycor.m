@@ -784,22 +784,26 @@ else
     std_times = handles.std_times_separate(ii);
     range = handles.range_separate{ii};
 end
-if isempty(range)
-    plot(handles.x_scale, handles.avg_spc(:,ii), '-', 'Color', [192, 192, 192] / 255);
-else
+
+not_treated_color = [192 192 192] / 255;  % color of the part of the spectrum which was not treated
+
+if isempty(range)  % if chosen spectrum is not treated
+    plot(handles.x_scale, handles.spectra_orig(:,ii), '-', 'Color', not_treated_color);
+else  % if chosen spectrum is treated
+    % plot spectrum in ranges, which are not treated
     if range(1) ~= 1
         cinds = 1:range(1);
-        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        plot(handles.x_scale(cinds), handles.spectra_orig(cinds, ii), '-', 'Color', not_treated_color);
         hold on;
     end
     for jj = 3:2:length(range)
         cinds = range(jj - 1):range(jj);
-        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        plot(handles.x_scale(cinds), handles.spectra_orig(cinds, ii), '-', 'Color', not_treated_color);
         hold on;
     end
     if range(end) ~= length(handles.x_scale)
         cinds = range(end):length(handles.x_scale);
-        plot(handles.x_scale(cinds), handles.avg_spc(cinds, ii), '-', 'Color', [192, 192, 192] / 255);
+        plot(handles.x_scale(cinds), handles.spectra_orig(cinds, ii), '-', 'Color', not_treated_color);
         hold on;
     end
 
