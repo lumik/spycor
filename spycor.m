@@ -8,7 +8,7 @@ handles = guidata(hObject);
 % Choose default command line output for spycor
 handles.output = hObject;
 
-handles.current_directory = pwd; % nastaveni aktualniho adresare
+handles.current_directory = pwd; % set current working directory
 handles.filepath = handles.current_directory;
 handles.filename = '';
 
@@ -42,154 +42,245 @@ handles.chosen_spectrum = 1;
 h=spycor_functions;
 [handles.spycor_load, handles.find_corrIdx, handles.vec2str]=h{:};
 
-handles.file_menu = uimenu('Label','File');
-handles.load_menuitem = uimenu(handles.file_menu, 'Label','Load','Accelerator','O',...
-    'Callback',@load_menuitem_Callback);
-handles.load_menuitem = uimenu(handles.file_menu, 'Label','Save','Accelerator','S',...
-    'Callback',@save_menuitem_Callback);
+% create menus
+handles.file_menu = uimenu('Label', 'File');
+handles.load_menuitem = uimenu(handles.file_menu,...
+    'Label', 'Load',...
+    'Accelerator', 'O',...
+    'Callback', @load_menuitem_Callback);
+handles.load_menuitem = uimenu(handles.file_menu,...
+    'Label', 'Save',...
+    'Accelerator', 'S',...
+    'Callback', @save_menuitem_Callback);
 
-handles.select_spec_panel = uipanel('Title','Select spectrum','Units',...
-    'normalized','Position',[.05,.88,.35,.1],'Visible','off');
-handles.chosen_spec_text = uicontrol('Style','pushbutton','Units','normalized',...
-    'Position',[.47 .15 .5 .8],'String','Chosen spectrum:','Parent',...
-    handles.select_spec_panel,'BackgroundColor','green','Enable',...
-    'inactive');
-handles.choose_spec_pushbutton = uicontrol('Style', 'pushbutton','Units','normalized','Position',...
-    [.02 .15 .13 .8],'String','#','Parent',handles.select_spec_panel,...
-    'TooltipString','Will chose one spectrum','Visible','on',...
-    'Enable','on','FontSize',10, 'Callback', @choose_spec_pushbutton_Callback);
-handles.down_pushbutton = uicontrol('Style','pushbutton','Units','normalized','Position',...
-    [.17 .15 .13 .8],'String','<','Parent',handles.select_spec_panel,...
-    'TooltipString','Will chose one spectrum','FontSize',10,...
+
+% select spectrum panel
+% ---------------------
+handles.select_spec_panel = uipanel(...
+    'Title', 'Select spectrum',...
+    'Units', 'normalized',...
+    'Position', [.05 .88 .35 .1],...
+    'Visible', 'off');
+handles.chosen_spec_text = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.47 .15 .5 .8],...
+    'String', 'Chosen spectrum:',...
+    'Parent', handles.select_spec_panel,...
+    'BackgroundColor', 'green',...
+    'Enable', 'inactive');
+handles.choose_spec_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.02 .15 .13 .8],...
+    'String', '#',...
+    'Parent', handles.select_spec_panel,...
+    'TooltipString', 'Will chose one spectrum',...
+    'Visible', 'on',...
+    'Enable', 'on',...
+    'FontSize', 10,...
+    'Callback', @choose_spec_pushbutton_Callback);
+handles.down_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.17 .15 .13 .8],...
+    'String', '<',...
+    'Parent', handles.select_spec_panel,...
+    'TooltipString', 'Will chose one spectrum',...
+    'FontSize', 10,...
     'Callback', @down_pushbutton_Callback);
-handles.up_pushbutton = uicontrol('Style','pushbutton','Units','normalized','Position',...
-    [.32 .15 .13 .8],'String','>','Parent',handles.select_spec_panel,...
-    'TooltipString','Will chose one spectrum','FontSize',10,...
+handles.up_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.32 .15 .13 .8],...
+    'String', '>',...
+    'Parent', handles.select_spec_panel,...
+    'TooltipString', 'Will chose one spectrum',...
+    'FontSize', 10,...
     'Callback', @up_pushbutton_Callback);
-handles.main_axes = axes('Units','normalized','Position',[0.05,0.05,0.9,0.8]);
 
-handles.settings_panel = uipanel('Title','Settings','Units',...
-    'normalized','Position',[.42,.88,.53,.1],'Visible','off');
-handles.times_text = uicontrol('Style','text','Units','normalized','Position',...
-    [.01 .35 .13 .4],'String','times:','Parent',handles.settings_panel,...
-    'TooltipString','Multiples of standard deviation to resolve spike','FontSize',10);
-handles.times_edit = uicontrol('Style','edit','Units','normalized','Position',...
-    [.14 .15 .10 .8],'String',num2str(handles.std_times),'Parent',handles.settings_panel,...
-    'TooltipString','Multiples of standard deviation to resolve spike','FontSize',10,...
-    'Callback', @times_edit_Callback, 'CreateFcn', @times_edit_CreateFcn);
+% axes
+handles.main_axes = axes(...
+    'Units', 'normalized',...
+    'Position', [0.05 0.05 0.9 0.8]);
 
-handles.extra_del_points_text = uicontrol('Style','text','Units','normalized','Position',...
-    [.25 .35 .12 .4],'String','extra:','Parent',handles.settings_panel,...
-    'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10);
-handles.extra_del_points_edit = uicontrol('Style','edit','Units','normalized','Position',...
-    [.37 .15 .10 .8],'String',num2str(handles.extra_del_points),'Parent',handles.settings_panel,...
-    'TooltipString','Number of points to be deleted around spike on both sides.','FontSize',10,...
-    'Callback', @extra_del_points_edit_Callback, 'CreateFcn', @extra_del_points_edit_CreateFcn);
-
-handles.range_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.55 .15 .115 .8],...
-    'String', 'range', 'Parent', handles.settings_panel,...
+% settings panel
+% --------------
+handles.settings_panel = uipanel(...
+    'Title', 'Settings',...
+    'Units', 'normalized',...
+    'Position', [.42 .88 .53 .1],...
+    'Visible','off');
+% times edit
+handles.times_text = uicontrol(...
+    'Style', 'text',...
+    'Units', 'normalized',...
+    'Position', [.01 .35 .13 .4],...
+    'String', 'times:',...
+    'Parent', handles.settings_panel,...
+    'TooltipString', 'Multiples of standard deviation to resolve spike',...
+    'FontSize', 10);
+handles.times_edit = uicontrol(...
+    'Style', 'edit',...
+    'Units', 'normalized',...
+    'Position', [.14 .15 .10 .8],...
+    'String', num2str(handles.std_times),...
+    'Parent', handles.settings_panel,...
+    'TooltipString', 'Multiples of standard deviation to resolve spike',...
+    'FontSize', 10,...
+    'Callback', @times_edit_Callback,...
+    'CreateFcn', @times_edit_CreateFcn);
+% extra edit
+handles.extra_del_points_text = uicontrol(...
+    'Style', 'text',...
+    'Units', 'normalized',...
+    'Position', [.25 .35 .12 .4],...
+    'String', 'extra:',...
+    'Parent', handles.settings_panel,...
+    'TooltipString', 'Number of points to be deleted around spike on both sides.',...
+    'FontSize', 10);
+handles.extra_del_points_edit = uicontrol(...
+    'Style', 'edit',...
+    'Units', 'normalized',...
+    'Position', [.37 .15 .10 .8],...
+    'String', num2str(handles.extra_del_points),...
+    'Parent', handles.settings_panel,...
+    'TooltipString', 'Number of points to be deleted around spike on both sides.',...
+    'FontSize', 10,...
+    'Callback', @extra_del_points_edit_Callback,...
+    'CreateFcn', @extra_del_points_edit_CreateFcn);
+% range pushbutton
+handles.range_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.55 .15 .115 .8],...
+    'String', 'range',...
+    'Parent', handles.settings_panel,...
     'TooltipString', 'Sets used spectral range',...
-    'FontSize', 10, 'Callback', @range_pushbutton_Callback);
-handles.extent_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.68 .15 .115 .8],...
-    'String', 'extent', 'Parent', handles.settings_panel,...
+    'FontSize', 10,...
+    'Callback', @range_pushbutton_Callback);
+% extent pushputton
+handles.extent_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.68 .15 .115 .8],...
+    'String', 'extent',...
+    'Parent', handles.settings_panel,...
     'TooltipString', 'Sets which neighbour spectra are used for spike detection',...
-    'FontSize', 10, 'Callback', @extent_pushbutton_Callback);
-
+    'FontSize', 10,...
+    'Callback', @extent_pushbutton_Callback);
+% all pushbutton
 if handles.all
     all_pushbutton_enable = 'off';
 else
     all_pushbutton_enable = 'on';
 end
-handles.all_pushbutton = uicontrol('Style', 'pushbutton', 'Units', 'normalized', 'Position', [.81 .15 .085 .8],...
-    'String', 'all', 'Parent', handles.settings_panel,...
+handles.all_pushbutton = uicontrol(...
+    'Style', 'pushbutton',...
+    'Units', 'normalized',...
+    'Position', [.81 .15 .085 .8],...
+    'String', 'all',...
+    'Parent', handles.settings_panel,...
     'TooltipString', 'Sets the current settings for all spectra',...
-    'Enable', all_pushbutton_enable, 'FontSize', 10, 'Callback', @all_pushbutton_Callback);
-handles.all_checkbox = uicontrol('Style', 'checkbox', 'Units', 'normalized', 'Position', [.90 .35 .10 .4],...
-    'String', 'all', 'Parent', handles.settings_panel,...
+    'Enable', all_pushbutton_enable,...
+    'FontSize', 10,...
+    'Callback', @all_pushbutton_Callback);
+% all checkbox
+handles.all_checkbox = uicontrol(...
+    'Style', 'checkbox',...
+    'Units', 'normalized',...
+    'Position', [.90 .35 .10 .4],...
+    'String', 'all',...
+    'Parent', handles.settings_panel,...
     'Value', handles.all,...
     'Tooltipstring', ['All spectra have the same settings. If set to true, the settings for all spectra will be set'...
-    ' to settings for the current spectrum. Custom settings will be restored if it is set to false again.'],...
+        ' to settings for the current spectrum. Custom settings will be restored if it is set to false again.'],...
     'Callback', @all_checkbox_Callback);
 
 %Make the UI visible.
-set(hObject,'Visible','on');
+set(hObject, 'Visible', 'on');
 
 % Update handles structure
 guidata(hObject, handles);
 
-% --------------------------------------------------------------------
-function load_menuitem_Callback(hObject, eventdata)
+
+% --- Executes on menu item in load_menuitem.
+function load_menuitem_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to load_menuitem (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-% handles = guidata(hObject);
 handles = guidata(hObject);
-filter_spec={'*.*','All Files (*.*)';
- '*.mat','MAT-files (*.mat)';
- '*.txt;*.dat','text files (*.txt,*.dat)'}; 
-[status,soubor,cesta,data_orig]=handles.spycor_load(0,handles.current_directory,...
-  filter_spec,'Load Data','Off');
-if status==0 % Pokud dojde k chybe pri nacitani dat (stisknuti cancel),
-  % zobrazi se chybova hlaska.   
-  h_errordlg=errordlg('No data load or invalid format of data !',...
-      'loading data');
-  waitfor(h_errordlg);
-else % V pripade nacteni dat se provadi vse dalsi v Callbacku (prepisou se
-  % predchozi data a smazou predchozi fity).
-  if size(data_orig, 2) < handles.N_spectra_limit + 1
+
+% load the file
+filter_spec = {
+    '*.*','All Files (*.*)';
+    '*.mat','MAT-files (*.mat)';
+    '*.txt;*.dat', 'text files (*.txt,*.dat)'};
+[status, filename, filepath, data_orig] = handles.spycor_load(0, handles.current_directory, filter_spec,...
+    'Load Data', 'Off');
+
+if status==0  % Bad input data or cancel clicked.
+    h_errordlg = errordlg('No data load or invalid format of data !', 'loading data');
+    waitfor(h_errordlg);
+    return
+end
+
+% test data validity
+if size(data_orig, 2) < handles.N_spectra_limit + 1
     h_errordlg=errordlg(sprintf('The file must contain %d spectra at least!', handles.N_spectra_limit));
     waitfor(h_errordlg);
     return;
-  end
-  handles.x_scale = data_orig(:,1);
-  handles.spectra_orig = data_orig(:,2:end);
-  N = size(handles.spectra_orig, 2);
-  handles.N_spectra = N;
-
-  handles.spectra_corr = handles.spectra_orig;
-  handles.avg_spc = handles.spectra_orig;
-  handles.std_spc = zeros(N, 1);
-  handles.corrIdx = cell(N, 1);
-
-  handles.chosen_spectrum = 1;
-  handles.recalculate = true(N, 1);
-  handles.calculated_once = zeros(N, 1);
-
-  handles.std_times_separate = ones(N, 1) * handles.std_times;
-  handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
-  handles.extent = 0;
-  handles.extent_separate = cell(N, 1);
-  handles.extent_separate(:) = {handles.extent};
-  handles.range = [1, length(handles.x_scale)];
-  handles.range_separate = cell(N, 1);
-  handles.range_separate(:) = {handles.range};
-
-  set(handles.select_spec_panel, 'Visible','on');
-  set(handles.settings_panel, 'Visible','on');
-  set(handles.chosen_spec_text, 'String', ...
-      sprintf('Chosen spectrum: %d', handles.chosen_spectrum), ...
-      'BackgroundColor', 'green');
-  set(handles.down_pushbutton,'Enable','off');
-  if(handles.N_spectra == 1)
-      set(handles.up_pushbutton,'Enable','off');
-  else
-      set(handles.up_pushbutton,'Enable','on');
-  end
-  handles.filepath = cesta;
-  handles.current_directory = cesta;
-  handles.filename = soubor;
-  
-  guidata(hObject, handles);
-  
-  treat_data(hObject, handles.chosen_spectrum);
-  
-  change_spectrum(hObject);
 end
 
-function save_menuitem_Callback(hObject, eventdata)
+% set global variables
+handles.x_scale = data_orig(:,1);
+handles.spectra_orig = data_orig(:,2:end);
+N = size(handles.spectra_orig, 2);
+handles.N_spectra = N;
+
+handles.spectra_corr = handles.spectra_orig;
+handles.avg_spc = handles.spectra_orig;
+handles.std_spc = zeros(N, 1);
+handles.corrIdx = cell(N, 1);
+
+handles.chosen_spectrum = 1;
+handles.recalculate = true(N, 1);
+handles.calculated_once = zeros(N, 1);
+
+handles.std_times_separate = ones(N, 1) * handles.std_times;
+handles.extra_del_points_separate = ones(N, 1) * handles.extra_del_points;
+handles.extent = 0;
+handles.extent_separate = cell(N, 1);
+handles.extent_separate(:) = {handles.extent};
+handles.range = [1, length(handles.x_scale)];
+handles.range_separate = cell(N, 1);
+handles.range_separate(:) = {handles.range};
+
+set(handles.select_spec_panel, 'Visible', 'on');
+set(handles.settings_panel, 'Visible', 'on');
+set(handles.chosen_spec_text,...
+    'String', sprintf('Chosen spectrum: %d', handles.chosen_spectrum),...
+    'BackgroundColor', 'green');
+set(handles.down_pushbutton, 'Enable', 'off');
+if(handles.N_spectra == 1)
+    set(handles.up_pushbutton, 'Enable', 'off');
+else
+    set(handles.up_pushbutton, 'Enable', 'on');
+end
+handles.filepath = filepath;
+handles.current_directory = filepath;
+handles.filename = filename;
+
+guidata(hObject, handles);
+
+treat_data(hObject, handles.chosen_spectrum);
+
+change_spectrum(hObject);
+
+
+% --- Executes on menu item in save_menuitem.
+function save_menuitem_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to save_menuitem (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
 
 if any(handles.recalculate)
@@ -201,71 +292,68 @@ end
 
 handles = guidata(hObject);
 
-savedata = [handles.x_scale ,handles.spectra_corr];
+savedata = [handles.x_scale ,handles.spectra_corr];  %#ok<NASGU>
 I = find(handles.filename == '.', 1, 'last');
-filename = [handles.filepath,handles.filename(1:I-1),'_kor.txt'];
-fprintf('Saving file:\n%s\n',filename);
-save(filename,'savedata','-ascii');
+filename = [handles.filepath,handles.filename(1:I-1), '_kor.txt'];
+fprintf('Saving file:\n%s\n', filename);
+save(filename, 'savedata', '-ascii');
 fprintf('Done.\n');
 
+
 % --- Executes on button press in choose_spec_pushbutton.
-function choose_spec_pushbutton_Callback(hObject, eventdata)
+function choose_spec_pushbutton_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to choose_spec_pushbutton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
-prompt = {sprintf('Select one spectrum\n(integer from 1 to %d)',...
-    handles.N_spectra)}; 
+prompt = {sprintf('Select one spectrum\n(integer from 1 to %d)', handles.N_spectra)}; 
 dlg_title_matrix = 'Selection of spectrum';
 num_lines = 1;
-options.Resize='on';
-odpoved_num_of_spec=inputdlg(prompt,dlg_title_matrix,num_lines,{'',''},...
-    options);
-%--------------------------------------------------------------------------
-% Testovani, zda nebylo stisknuto cancel
-%--------------------------------------------------------------------------
-if ~isequal(odpoved_num_of_spec,{})
-    [num_chos_spec,status]=str2num(odpoved_num_of_spec{1});
-    if num_chos_spec < 1 || num_chos_spec > handles.N_spectra || ...
-            status == 0 || ...
-            ~isequal(floor(num_chos_spec), num_chos_spec) || ...
-            size(num_chos_spec,2) ~= 1
-        % Nepripustne hodnoty
-        set(handles.chosen_spec_text,'String', 'Incorrect number', ...
-        'BackgroundColor','red'); % Chybna hodnota a jeji cervena indikace
-        %errordlg('You selected incorret number of spectra','Incorret input','on'); 
-    else % Pripustne hodnoty mezi matice se ulozi do globalnich promennych
-        if num_chos_spec > 1
-            set(handles.down_pushbutton, 'Enable', 'on');
-        else
-           set(handles.down_pushbutton, 'Enable', 'off');
-        end
-        if num_chos_spec<handles.N_spectra
-            set(handles.up_pushbutton, 'Enable', 'on');
-        else
-            set(handles.up_pushbutton, 'Enable', 'off');
-        end
-        handles.chosen_spectrum = num_chos_spec;
+options.Resize = 'on';
+answer_num_of_spec = inputdlg(prompt, dlg_title_matrix, num_lines, {'',''}, options);
 
-        guidata(hObject, handles);
-        change_spectrum(hObject);
-    end
-end 
+if isequal(answer_num_of_spec,{})  % cancel pressed
+    return
+end
+
+% validate input
+num_chos_spec = str2double(answer_num_of_spec{1});
+if isnan(num_chos_spec) || ~isscalar(num_chos_spec) || ~isempty(find(num_chos_spec == ',', 1))...
+        || rem(num_chos_spec, 1) || num_chos_spec <= 0 || num_chos_spec > handles.N_spectra
+    set(handles.chosen_spec_text, 'String', 'Incorrect number', 'BackgroundColor', 'red');
+    return
+end
+
+% change spectrum
+set(handles.chosen_spec_text, 'BackgroundColor', 'green');
+if num_chos_spec > 1
+    set(handles.down_pushbutton, 'Enable', 'on');
+else
+    set(handles.down_pushbutton, 'Enable', 'off');
+end
+if num_chos_spec<handles.N_spectra
+    set(handles.up_pushbutton, 'Enable', 'on');
+else
+    set(handles.up_pushbutton, 'Enable', 'off');
+end
+handles.chosen_spectrum = num_chos_spec;
+
+guidata(hObject, handles);
+change_spectrum(hObject);
+
 
 % --- Executes on button press in down_pushbutton.
-function down_pushbutton_Callback(hObject, eventdata)
+function down_pushbutton_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to down_pushbutton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
 if handles.chosen_spectrum <= 2
     handles.chosen_spectrum = 1;
-    set(handles.down_pushbutton,'Enable','off');
+    set(handles.down_pushbutton, 'Enable', 'off');
 else
     handles.chosen_spectrum = handles.chosen_spectrum - 1;
 end
 if handles.chosen_spectrum < handles.N_spectra
-    set(handles.up_pushbutton,'Enable','on');
+    set(handles.up_pushbutton, 'Enable', 'on');
 end
 
 guidata(hObject, handles);
@@ -273,19 +361,18 @@ change_spectrum(hObject);
 
 
 % --- Executes on button press in up_pushbutton.
-function up_pushbutton_Callback(hObject, eventdata)
+function up_pushbutton_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to up_pushbutton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
 if handles.chosen_spectrum >= handles.N_spectra - 1
     handles.chosen_spectrum = handles.N_spectra;
-    set(handles.up_pushbutton,'Enable','off');
+    set(handles.up_pushbutton, 'Enable', 'off');
 else
     handles.chosen_spectrum = handles.chosen_spectrum + 1;
 end
 if handles.chosen_spectrum > 1
-    set(handles.down_pushbutton,'Enable','on');
+    set(handles.down_pushbutton, 'Enable', 'on');
 end
 
 guidata(hObject, handles);
@@ -293,25 +380,20 @@ change_spectrum(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
-function times_edit_CreateFcn(hObject, eventdata, handles)
+function times_edit_CreateFcn(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to times_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
+% edit controls have a white background on Windows.
+if ispc && isequal(get(hObject, 'BackgroundColor'), get(0, 'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor', 'white');
 end
 
-function times_edit_Callback(hObject, eventdata)
+
+% --- Executes on edit in times_edit.
+function times_edit_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to times_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of times_edit as text
-%        str2double(get(hObject,'String')) returns contents of times_edit as a double
-
 handles = guidata(hObject);
 
 times = str2double(get(hObject, 'String'));
@@ -339,21 +421,21 @@ treat_data(hObject, ii);
 
 plot_function(hObject);
 
+
 % --- Executes during object creation, after setting all properties.
-function extra_del_points_edit_CreateFcn(hObject, eventdata)
+function extra_del_points_edit_CreateFcn(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to extra_del_points_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% edit controls have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
-function extra_del_points_edit_Callback(hObject, eventdata)
+
+function extra_del_points_edit_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to extra_del_points_edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-
 handles = guidata(hObject);
 
 extra = str2double(get(hObject, 'String'));
@@ -389,6 +471,7 @@ function range_pushbutton_Callback(hObject, eventdata, defans)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % defams     defaut answer
 handles = guidata(hObject);
+
 ii = handles.chosen_spectrum;
 N = handles.N_spectra;
 
@@ -440,8 +523,8 @@ try
     for jj = 1:2:length(range_vals)
         x = handles.x_scale(handles.x_scale > range_vals(jj) & handles.x_scale < range_vals(jj + 1));
         if ~isempty(x)
-            [Y, I1] = min(abs(handles.x_scale - range_vals(jj)));
-            [Y, I2] = min(abs(handles.x_scale - range_vals(jj + 1)));
+            [Y, I1] = min(abs(handles.x_scale - range_vals(jj)));  %#ok<ASGLU>
+            [Y, I2] = min(abs(handles.x_scale - range_vals(jj + 1)));  %#ok<ASGLU>
             range_inds = [range_inds, I1:I2];
         end
     end
@@ -453,7 +536,7 @@ try
     end
 catch ME
     getReport(ME)
-    h_errordlg=errordlg(sprintf('%s', ME.message), 'Input error');
+    h_errordlg = errordlg(sprintf('%s', ME.message), 'Input error');
     waitfor(h_errordlg);
     range_pushbutton_Callback(hObject, eventdata, range_text)
     return
@@ -462,7 +545,7 @@ end
 if ~isempty(range_inds)
     range = range_inds(1);
     rangeinds = 1:(length(range_inds) - 1);
-    rangeinds = rangeinds(diff(range_inds)~=1);
+    rangeinds = rangeinds(diff(range_inds) ~= 1);
     rangeinner = [range_inds(rangeinds); range_inds(rangeinds + 1)];
     range = [range, rangeinner(:)', range_inds(end)];
 else
@@ -579,7 +662,7 @@ try
     end
 catch ME
     getReport(ME)
-    h_errordlg=errordlg(sprintf('%s', ME.message), 'Input error');
+    h_errordlg = errordlg(sprintf('%s', ME.message), 'Input error');
     waitfor(h_errordlg);
     extent_pushbutton_Callback(hObject, eventdata, extent_text)
     return
@@ -605,7 +688,7 @@ change_spectrum(hObject);
 
 
 % --- Executes on button press in all_checkbox.
-function all_checkbox_Callback(hObject, eventdata)
+function all_checkbox_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to all_checkbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 handles = guidata(hObject);
@@ -650,7 +733,7 @@ change_spectrum(hObject);
 
 
 % --- Executes on button press in all_pushbutton.
-function all_pushbutton_Callback(hObject, eventdata)
+function all_pushbutton_Callback(hObject, eventdata)  %#ok<INUSD>
 % hObject    handle to all_pushbutton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 handles = guidata(hObject);
@@ -676,6 +759,9 @@ guidata(hObject, handles);
 
 
 function treat_data(hObject, spc_no)
+% Main data treatment method.
+% hObject    handle to calling gui (used to require global variables)
+% spc_no     number of spectrum to be treated
 handles = guidata(hObject);
 
 ii = spc_no;
@@ -744,13 +830,14 @@ guidata(hObject,handles);
 
 
 function change_spectrum(hObject)
+% Prepares data and sets GUI after the spectrum was changed.
+% hObject    handle to calling gui (used to require global variables)
 
 handles = guidata(hObject);
 
 ii = handles.chosen_spectrum;
 
-set(handles.chosen_spec_text, 'String', sprintf('Chosen spectrum: %d', ii), ...
-    'BackgroundColor', 'green');
+set(handles.chosen_spec_text, 'String', sprintf('Chosen spectrum: %d', ii), 'BackgroundColor', 'green');
 if handles.all
     set(handles.times_edit, 'String', num2str(handles.std_times));
     set(handles.extra_del_points_edit, 'String', num2str(handles.extra_del_points));
@@ -768,8 +855,9 @@ end
 plot_function(hObject);
 
 
-
 function plot_function(hObject)
+% Plots results.
+% hObject    handle to calling gui (used to require global variables)
 
 handles = guidata(hObject);
 
@@ -807,22 +895,26 @@ else  % if chosen spectrum is treated
         hold on;
     end
 
+    % plot first treated range and save curve handles for legend
     inds = range(1):range(2);
-    pH(1) = plot(handles.x_scale(inds), handles.avg_spc(inds,ii),'-k');
+    pH(1) = plot(handles.x_scale(inds), handles.avg_spc(inds,ii), '-k');
     hold on;
     plot(handles.x_scale(inds), handles.avg_spc(inds,ii) + std_times * handles.std_spc(ii), ':k');
-    pH(2) = plot(handles.x_scale(inds), handles.spectra_orig(inds,ii),'-b');
+    pH(2) = plot(handles.x_scale(inds), handles.spectra_orig(inds,ii), '-b');
+
+    % plot other treated ranges
     for jj = 3:2:length(range)
         inds = range(jj):range(jj + 1);
-        plot(handles.x_scale(inds), handles.avg_spc(inds,ii),'-k');
+        plot(handles.x_scale(inds), handles.avg_spc(inds,ii), '-k');
         plot(handles.x_scale(inds), handles.avg_spc(inds,ii) + std_times * handles.std_spc(ii), ':k');
-        plot(handles.x_scale(inds), handles.spectra_orig(inds,ii),'-b');
+        plot(handles.x_scale(inds), handles.spectra_orig(inds,ii), '-b');
     end
 
+    % plot corrections
     if ~isempty(handles.corrIdx{ii})
-        for jj = 1:size(handles.corrIdx{ii},2)
+        for jj = 1:size(handles.corrIdx{ii}, 2)
             if handles.corrIdx{ii}{jj}(1) > handles.extra_del_points
-                idx1 = handles.corrIdx{ii}{jj}(1)-handles.extra_del_points;
+                idx1 = handles.corrIdx{ii}{jj}(1) - handles.extra_del_points;
             else
                 idx1 = 1;
             end
