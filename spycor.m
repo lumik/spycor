@@ -314,13 +314,22 @@ function times_edit_Callback(hObject, eventdata)
 
 handles = guidata(hObject);
 
+times = str2double(get(hObject, 'String'));
+if isnan(times) || ~isscalar(times) || times <= 0 || ~isempty(find(get(hObject, 'String') == ',', 1))
+    set(hObject, 'BackgroundColor', 'red');
+    h_errordlg = errordlg('Times must be one number greater than 0!', 'Input value error');
+    waitfor(h_errordlg);
+    return
+end
+
 ii = handles.chosen_spectrum;
 
+set(hObject, 'BackgroundColor', 'white');
 if handles.all
-    handles.std_times = str2double(get(hObject, 'String'));
+    handles.std_times = times;
     handles.recalculate = true(handles.N_spectra, 1);
 else
-    handles.std_times_separate(ii) = str2double(get(hObject, 'String'));
+    handles.std_times_separate(ii) = times;
     handles.recalculate(ii) = true;
 end
 
@@ -347,13 +356,23 @@ function extra_del_points_edit_Callback(hObject, eventdata)
 
 handles = guidata(hObject);
 
+extra = str2double(get(hObject, 'String'));
+if isnan(extra) || ~isscalar(extra) || rem(extra, 1) || extra < 0 || ~isempty(find(get(hObject, 'String') == ',', 1))
+    set(hObject, 'BackgroundColor', 'red');
+    h_errordlg = errordlg('Extra must be a non-negative integer!', 'Input value error');
+    waitfor(h_errordlg);
+    return
+end
+
+set(hObject, 'BackgroundColor', 'white');
+
 ii = handles.chosen_spectrum;
 
 if handles.all
-    handles.extra_del_points = str2double(get(hObject, 'String'));
+    handles.extra_del_points = extra;
     handles.recalculate = true(handles.N_spectra, 1);
 else
-    handles.extra_del_points_separate(ii) = str2double(get(hObject, 'String'));
+    handles.extra_del_points_separate(ii) = extra;
     handles.recalculate(ii) = true;
 end
 

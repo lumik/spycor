@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased](https://github.com/lumik/spycor/compare/v0.1.0...develop)
 
 ### Added
+- [Enahncement #8](https://github.com/lumik/spycor/issues/8): Added GUI imputs validation.
 - [Enahncement #9](https://github.com/lumik/spycor/issues/9): Enabled spectral range selection
 - [Enahncement #6](https://github.com/lumik/spycor/issues/6): Enabled possibility of only limited number of adjacent
   spectra to be used for spike detection.
