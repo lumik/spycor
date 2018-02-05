@@ -9,8 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
 ### Added
+- [Enahncement #3](https://github.com/lumik/spycor/issues/3): Added readme and documentation.
 - [Enahncement #8](https://github.com/lumik/spycor/issues/8): Added GUI imputs validation.
-- [Enahncement #9](https://github.com/lumik/spycor/issues/9): Enabled spectral range selection
+- [Enahncement #9](https://github.com/lumik/spycor/issues/9): Enabled spectral range selection.
 - [Enahncement #6](https://github.com/lumik/spycor/issues/6): Enabled possibility of only limited number of adjacent
   spectra to be used for spike detection.
 - [Enhancement #2](https://github.com/lumik/spycor/issues/2): Enabled different settings for individual spectra.
@@ -19,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Cleaned up coding style and comments.
-- `around:` renamed to `extra:`
+- `around:` renamed to `extra:`.
 - [Wantfix #5](https://github.com/lumik/spycor/issues/5): Removed false spike detection hook.
 
 
